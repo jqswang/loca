@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env jruby
 
 LocaCmdDir = File.dirname(File.expand_path(__FILE__))
 $: << LocaCmdDir

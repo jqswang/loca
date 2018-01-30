@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env jruby
 
 require_relative 'server'
 require_relative 'plot'
