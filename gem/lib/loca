@@ -175,7 +175,13 @@ begin
 =end
 
     elsif cmd == "upload"
-      data_dir = Labenv.paths[Labenv::DataDir]
+      if args.empty?
+        data_dir = "./loca-data"
+      else
+        data_dir = args[0]
+      end
+      puts "Upload data from #{data_dir}"
+      #data_dir = Labenv.paths[Labenv::DataDir]
       url = (args[0] != '-r')?'http://localhost:3000/upload':'http://loca.highpower.me:3000/upload'
       Dir.foreach(data_dir) { |file|
         isDir = File.directory?(file)
@@ -183,6 +189,7 @@ begin
         if file =~ /.dat([.][a|i|d])?$/ or file =~ /.info$/ or file =~ /.fp$/#check file type
           basename = File.join(data_dir, file)
           f = File.new(basename, "rb")
+          puts "Sending post #{basename}"
           reply = RestClient.post(url,
                                   :upload => f
           )
