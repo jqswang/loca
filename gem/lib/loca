@@ -210,6 +210,8 @@ begin
 rescue Exception => e
   msg = "Loca Error Report: command 'loca #{cmd}' failed.\n#{e.message}" + "\n" + "#{e.backtrace * ' '}\n\n"
   msg += Labenv.env.inspect
+  puts msg
+=begin
   while true
     puts "\n\nLoca Execution Error: Do you give permission to send the error report by email? \n(Answer yes/no/see report)"
     answer = $stdin.gets.chomp
@@ -223,5 +225,6 @@ rescue Exception => e
       break
     end # if
   end # while
+=end
 end
   
