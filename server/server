@@ -12,6 +12,12 @@ $DryRun = false
 LocaServerDir = File.dirname(File.expand_path(__FILE__))
 $: << LocaServerDir
 
+HomeDir = File.join(LocaServerDir, "server-data")
+
+unless File.directory?(HomeDir)
+  FileUtils.mkdir_p(HomeDir)
+end
+=begin
 ## Look for the data directory:
 #  (1) choose the current directory if it is named 'data'.
 #  (2) choose ~/.loca/data if env.rb is available (i.e.
@@ -31,6 +37,7 @@ else
     HomeDir = File.expand_path(".")
   end
 end
+=end
 ### $currentDir = "./"
 puts "LocaServer: serving from #{HomeDir}"
 
