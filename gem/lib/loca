@@ -188,6 +188,7 @@ begin
         next if File.directory?(file)
         if file =~ /.dat([.][a|i|d])?$/ or file =~ /.info$/ or file =~ /.fp$/#check file type
           basename = File.join(data_dir, file)
+          #basename = File.expand_path(basename) #extend it to absolute path
           f = File.new(basename, "rb")
           puts "Sending post #{basename}"
           reply = RestClient.post(url,
