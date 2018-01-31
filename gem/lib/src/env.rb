@@ -13,8 +13,8 @@ module Labenv
 
   # user inputs
   PinDir = "pin directory"
-  LocaServer = "loca server"
-  UserInputs = [PinDir, LocaServer]
+  #LocaServer = "loca server"
+  UserInputs = [PinDir] #[PinDir, LocaServer]
  
   # debugging
   Debug = true
@@ -34,7 +34,7 @@ module Labenv
     if Labenv.env == nil
       @@env = Hash.new  # initial env
       Labenv.env[PinDir] = '/localdisk/cding/pin/pin-2.9-39599-gcc.3.4.6-ia32_intel64-linux'
-      Labenv.env[LocaServer] = Labenv.paths[Labenv::DataDir] # 'cycle1.cs.rochester.edu:/p/compiler/loclab/data'
+      #Labenv.env[LocaServer] = Labenv.paths[Labenv::DataDir] # 'cycle1.cs.rochester.edu:/p/compiler/loclab/data'
     end
 
     if gui
@@ -53,7 +53,7 @@ module Labenv
     #Labenv.env["prun"] = "#{File.join(Labenv.env[PinDir],"pin")} -t #{Labenv.env[:anytaskset_obj]}"
     #Labenv.env["pfp"] = "#{LocaCmdDir}/src/Anytaskset/anytaskset-sfp-compose.rb"
     #Labenv.env["pmr"] = "#{LocaCmdDir}/src/Anytaskset/anytaskset-mc.rb"
-    Labenv.env["upload"] = "rsync -trv ~/.loca/data #{Labenv.env[LocaServer]}"
+    #Labenv.env["upload"] = "rsync -trv ~/.loca/data #{Labenv.env[LocaServer]}"
 
     # accepted = gui.verify( hash2arrlist(cmd) )
     # cmd.each{ |k,v| Labenv.env[k] = v }
@@ -98,9 +98,10 @@ module Labenv
   end
 
   def self.setup_paths
-    home = ENV[ ["HOME", "HOMEPATH"].detect {|h| ENV[h] != nil} ]
-    raise "Could not find home directory" unless home != nil
-    root = home + "/#{LocaDir}"
+    #home = ENV[ ["HOME", "HOMEPATH"].detect {|h| ENV[h] != nil} ]
+    #raise "Could not find home directory" unless home != nil
+    root = File.expand_path(File.join(File.dirname(__FILE__),"../loca-data"))
+    #root = home + "/#{LocaDir}"
     if not File.directory? root
       Dir.mkdir( root, 0755 )
       warn("Locality Lab: Directory created at #{root}")
