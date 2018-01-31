@@ -3,6 +3,7 @@
 LocaCmdDir = File.dirname(File.expand_path(__FILE__))
 $: << LocaCmdDir
 
+require 'fileutils'
 require 'src/env'
 require 'src/machine'
 #require 'src/Anytaskset/anytaskset-mc'
@@ -60,7 +61,10 @@ begin
     end
 
     if cmd == "run"
-      data_dir = Labenv.paths[Labenv::DataDir]
+      data_dir = "./loca-data" #jqswang #Labenv.paths[Labenv::DataDir]
+      unless File.directory?(data_dir)
+        FileUtils.mkdir_p(data_dir)
+      end
       basename = Machine.get_output_file_name(args[0])
       last = File.open("#{data_dir}/name.last","w")
       last.write basename
