@@ -188,12 +188,14 @@ begin
         next if File.directory?(file)
         if file =~ /.dat([.][a|i|d])?$/ or file =~ /.info$/ or file =~ /.fp$/#check file type
           basename = File.join(data_dir, file)
-          #basename = File.expand_path(basename) #extend it to absolute path
-          f = File.new(basename, "rb")
+          basename = File.expand_path(basename) #extend it to absolute path
+          #f = File.new(basename, "rb")
+          #puts "Sending post #{basename}"
+          #reply = RestClient.post(url,
+          #                        :upload => f
+          #)
           puts "Sending post #{basename}"
-          reply = RestClient.post(url,
-                                  :upload => f
-          )
+          reply = RestClient.post(url, :upload => basename) # now we send the file path instead of the file object
           if reply != ''
             puts url[0..-7]+reply
             Launchy.open(url[0..-7]+reply)
@@ -202,7 +204,7 @@ begin
       }
     elsif cmd == "clean"
       #todo
-      puts "[todo] comming soon, please manually empty the data dir"
+      FileUtils.rm_rf("./loca-data")
     else
       puts "#{cmd} not a valid command (see '#{$0.split('/')[-1]} help')"
     end
