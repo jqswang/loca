@@ -17,28 +17,7 @@ HomeDir = File.join(LocaServerDir, "server-data")
 unless File.directory?(HomeDir)
   FileUtils.mkdir_p(HomeDir)
 end
-=begin
-## Look for the data directory:
-#  (1) choose the current directory if it is named 'data'.
-#  (2) choose ~/.loca/data if env.rb is available (i.e.
-#  client/server on the same machine).
-#  (3) if the first two fail, use the current directory, whatever it is.
-if File.expand_path(".").split("/")[-1] == 'data'
-  HomeDir = File.expand_path(".")
-else
-  begin
-    require_relative '../gem/lib/src/env' # use require '../X' for parent directory file is no longer supported in 1.9.2 or above
-    data_dir = Labenv.paths[Labenv::DataDir]
-    rescue Exception
-  end
-  if data_dir != nil
-    HomeDir = data_dir
-  else
-    HomeDir = File.expand_path(".")
-  end
-end
-=end
-### $currentDir = "./"
+
 puts "LocaServer: serving from #{HomeDir}"
 
 FileUtils.cp_r("#{LocaServerDir}/static/.", \
@@ -65,14 +44,17 @@ class CServer
     req = request.path # req looks like /program.dat or foldername
     fullreq = File.join(HomeDir, req) # fullreq is path/req
     ext = File.extname(req)
-    currentDir = File.join("./", File.dirname(req)) #{}"./"
-
+    currentDir = File.dirname(req)
+    #currentDir = File.join("./", File.dirname(req)) #{}"./"
+    
+    puts "req = #{req}, ext = #{ext}"
     ## Create list of items in directory.
     if File.directory?(fullreq)
+      puts "case 1 #{fullreq}"
       if req == "/"
-        currentDir = "./"
+        currentDir = HomeDIr
       else
-        currentDir = File.join("./", req)
+        currentDir = File.join(HomeDIr, req)
       end
 
       files, dirs = Server.browse(currentDir)
@@ -80,11 +62,11 @@ class CServer
       htmlString += Server.tableSection(currentDir, files, dirs)
       htmlString += Server.footMatter()
 
-      htmlFile = File.new(".current.html", "w")
+      htmlFile = File.new(File.join(currentDir,".current.html"), "w")
       htmlFile.write(htmlString)
       htmlFile.close
 
-      contents = File.open(".current.html", 'r') { |f| f.read }
+      contents = File.open(File.join(currentDir,".current.html"), 'r') { |f| f.read }
       headers = {
           'Content-Type' => 'text/html',
           'Content-Length' => contents.bytesize.to_s,
@@ -95,13 +77,13 @@ class CServer
       ## Create HTML files to display dynamic picture.
       if ext =~ /[a|i|d|dat]$/
         ["fp", "lf", "mr", "rd"].each do |metric|
-          File.open("#{program}.#{metric}.html", "w") do |imageHTML|
+          File.open(File.join(currentDir, "#{program}.#{metric}.html"), "w") do |imageHTML|
             imageHTML.puts Server.imagePage(currentDir, "#{program}", "#{metric}", false)
           end
         end
       else
         ["fp", "lf"].each do |metric|
-          File.open("#{program}.#{metric}.html", "w") do |imageHTML|
+          File.open(File.join(currentDir,"#{program}.#{metric}.html"), "w") do |imageHTML|
             imageHTML.puts Server.imagePage(currentDir, "#{program}", "#{metric}", true)
           end
         end
@@ -126,7 +108,7 @@ class CServer
         #  Else If the plot type form has been submitted, go to that plot.
         if (request.params["whichForm"] == "rangeForm")
           program = request.params["program"]
-          metric = request.params["metric"]
+          metric = request.params["metr`ic"]
           xmin = request.params["xmin"].to_f
           xmax = request.params["xmax"].to_f
           if ext =~ /[a|i|d|dat]$/
@@ -136,15 +118,14 @@ class CServer
           end
 
           plothtml = "#{program}.#{metric}.html"
-          contents = File.open(plothtml, 'r') { |f| f.read }
+          contents = File.open(File.join(currentDir, plothtml), 'r') { |f| f.read }
         elsif (request.params["whichForm"] == "typeForm")
           goToMetric = request.params["goToMetric"]
-          contents = File.open("#{program}.#{goToMetric}.html", 'r') { |f| f.read }
+          contents = File.open(File.join(currentDir, "#{program}.#{goToMetric}.html"), 'r') { |f| f.read }
         end
       else
-        contents = File.open("#{program}.fp.html", 'r') { |f| f.read }
+        contents = File.open(File.join(currentDir, "#{program}.fp.html"), 'r') { |f| f.read }
       end
-
       ## Create headers.
       headers = {
           'Content-Type' => 'text/html',
@@ -152,7 +133,8 @@ class CServer
       }
 
     else
-      req = (req == '/') ? '.current.html' : ".#{req}"
+      req = (req == '/') ? '.current.html' : req   ###".#{req}"
+      req = File.file?(req) ? req : File.join(HomeDir, req)
       type = case req
                when /\.html$/ then
                  'text/html'
@@ -165,7 +147,6 @@ class CServer
                else
                  'text/plain'
              end
-
       return unless File.file?(req)
       contents = File.open(req, 'r') { |file| file.read }
       headers = {
@@ -182,17 +163,16 @@ class UpServer
     request = Rack::Request.new(env)
     name = ''
     if (request.path == '/upload')
-      name = request.params["upload"][:filename]
-      puts name
-      if (name =~ /.dat([.][a|i|d])?$/ or name =~ /.info$/ or name =~ /.fp$/) #check file type
-        res = File.open("#{HomeDir}/#{name}", "wb")
-        res.puts request.params["upload"][:tempfile].readlines
-        res.close
-      end
+      puts "request.path = #{request.path}"
+      #name = request.params["upload"][:filename]
+      #puts request.params
+      #puts request.params["upload"]
+      name = request.params["upload"]
     end
     contents = ''
     if name =~ /.dat([.][a|i|d])?$/ or name =~ /.fp$/
-      contents = "data/#{name}"
+      #contents = "data/#{name}"
+      contents = name
     end
     headers = {
         'Content-Length' => contents.bytesize.to_s,
