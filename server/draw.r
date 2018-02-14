@@ -2,7 +2,7 @@ args <- commandArgs(TRUE)
 
 program <- args[1]
 ext <- args[2]
-
+cat("draw.r",program, ext, "\n") #jqswang
 rawdata <- read.table(paste(program, ext, sep=""), skip=1)
 N <- strsplit(strsplit(readLines(paste(program, ext, sep=""), 1), " ")[[1]][1], ":")[[1]][2]
 M <- strsplit(strsplit(readLines(paste(program, ext, sep=""), 1), " ")[[1]][2], ":")[[1]][2]

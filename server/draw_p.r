@@ -2,7 +2,7 @@ args <- commandArgs(TRUE)
 
 program <- args[1]
 ext <- args[2]
-
+cat("draw_p.r", program, ext, "\n") #jqswang
 rawdata <- read.table(paste(program, ext, sep=""))
 
 #draw footprint curve
