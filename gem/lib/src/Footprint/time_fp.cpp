@@ -18,7 +18,7 @@
 
 KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool", "o", "memory_trace.trd", "specify result file name");
 KNOB<uint32_t> KnobSamplingRate(KNOB_MODE_WRITEONCE, "pintool", "s","0", "Specify the sampling rate (if set to 0, sampling disabled)");
-
+KNOB<uint32_t> KnobInstrumentType(KNOB_MODE_WRITEONCE, "pintool", "i", "0", "Speicify what to instrument (0: R+W, 1:R, 2:W)");
 /* ===================================================================== */
 /* Global Variables */
 /* ===================================================================== */
@@ -119,7 +119,7 @@ VOID RecordMem(VOID * ip, VOID * addr)
 }
 
 
-VOID Instruction(INS ins, VOID *v) {
+VOID Instruction0(INS ins, VOID *v) {
     // Instruments loads using a predicated call, i.e.
     // the call happens iff the load will be actually executed.
     // The IA-64 architecture has explicitly predicated instructions. 
@@ -142,7 +142,26 @@ VOID Instruction(INS ins, VOID *v) {
     }
 }
 
+VOID Instruction1(INS ins, VOID *v) {
+    if (INS_IsMemoryRead(ins)) {
+      INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
+			   IARG_INST_PTR, IARG_MEMORYREAD_EA, 
+			   IARG_END);
+    }
+    if (INS_HasMemoryRead2(ins)) {
+      INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
+			   IARG_INST_PTR, IARG_MEMORYREAD2_EA, 
+			   IARG_END);
+    }
+}
 
+VOID Instruction2(INS ins, VOID *v) {
+    if (INS_IsMemoryWrite(ins))	{
+      INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
+			   IARG_INST_PTR, IARG_MEMORYWRITE_EA, 
+			   IARG_END);
+    }
+}
 
 /* ===================================================================== */
 
@@ -177,7 +196,21 @@ int main(int argc, char *argv[])
 
     g_sampling_rate = KnobSamplingRate.Value();
 
-    INS_AddInstrumentFunction(Instruction, 0);
+    switch(KnobInstrumentType.Value()){
+        case 0:
+            INS_AddInstrumentFunction(Instruction0, 0);
+            break;
+        case 1:
+            INS_AddInstrumentFunction(Instruction1, 0);
+            break;
+        case 2:
+            INS_AddInstrumentFunction(Instruction2, 0);
+            break;
+        default:
+            std::cerr << "Invalid value for instrumentation type" << std::endl;
+            return 0;
+    };
+
     PIN_AddFiniFunction(Fini, 0);
 
     gettimeofday(&start, 0);
