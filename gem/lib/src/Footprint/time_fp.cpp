@@ -16,7 +16,7 @@
 #include "pin.H"
 #include "portability.H"
 
-KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool", "o", "memory_trace.out", "specify result file name");
+KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool", "o", "memory_trace.trd", "specify result file name");
 KNOB<uint32_t> KnobSamplingRate(KNOB_MODE_WRITEONCE, "pintool", "s","0", "Specify the sampling rate (if set to 0, sampling disabled)");
 
 /* ===================================================================== */
