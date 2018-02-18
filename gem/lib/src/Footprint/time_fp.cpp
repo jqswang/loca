@@ -7,31 +7,33 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
-
-#include "pin.H"
-#include "portability.H"
-
-using namespace std;
-KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool",
-			    "o", "memory_trace.out", "specify result file name");
-
 #include <sys/time.h>
 #include <stdio.h>
 #include <string.h>
 #include <unordered_map>
+#include <unordered_set>
+
+#include "pin.H"
+#include "portability.H"
+
+KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool", "o", "memory_trace.out", "specify result file name");
+KNOB<uint32_t> KnobSamplingRate(KNOB_MODE_WRITEONCE, "pintool", "s","0", "Specify the sampling rate (if set to 0, sampling disabled)");
 
 /* ===================================================================== */
 /* Global Variables */
 /* ===================================================================== */
 std::ofstream ResultFile;
+uint32_t g_sampling_rate = 0;
+uint32_t g_number_samples = 0;
 
 #define CACHE_LINE_BITS 2 // 4 bytes
 #define GET_CACHE_LINE(addr) ((uint64_t)addr >> CACHE_LINE_BITS)
 
 uint64_t g_time_counter = 0;
-unordered_map<uint64_t, uint64_t> g_last_use_time;
-unordered_map<uint32_t, uint32_t> g_reuse_histo;
-
+std::unordered_map<uint64_t, uint64_t> g_last_use_time;
+std::unordered_map<uint32_t, uint32_t> g_reuse_histo;
+//std::unordered_set <uint64_t> g_sampled_addr; //seems unordered_set introduces compilation error
+std::unordered_map<uint64_t,bool> g_sampled_addr;
 
 struct timeval start;//start time of profiling
 struct timeval finish;//stop time of profiling
@@ -57,24 +59,63 @@ INT32 Usage() {
 
 VOID RecordMem(VOID * ip, VOID * addr)
 {
-  g_time_counter ++;
-  uint64_t target = GET_CACHE_LINE(addr);
-  auto it = g_last_use_time.find(target);
-  if( it == g_last_use_time.end()){
-    g_last_use_time.insert({target, g_time_counter});
-    return;
-  }
+	if (g_sampling_rate == 0) { //sampling disabled
+		g_time_counter ++;
+		uint64_t target = GET_CACHE_LINE(addr);
+		auto it = g_last_use_time.find(target);
+		if( it == g_last_use_time.end()){
+			g_last_use_time.insert({target, g_time_counter});
+			return;
+		}
 
-  uint32_t rd = g_time_counter - it->second;
-  it->second = g_time_counter;
+		uint32_t rd = g_time_counter - it->second;
+		it->second = g_time_counter;
 
-  auto it2 = g_reuse_histo.find(rd);
-  if ( it2 == g_reuse_histo.end()){
-    g_reuse_histo.insert({rd, 1});
-  }
-  else {
-    it2->second ++;
-  }
+		auto it2 = g_reuse_histo.find(rd);
+		if ( it2 == g_reuse_histo.end()){
+			g_reuse_histo.insert({rd, 1});
+		}
+		else {
+			it2->second ++;
+		}
+	}
+    else {  // sampling enabled
+		g_time_counter ++;
+		uint64_t target = GET_CACHE_LINE(addr);	
+		bool isSampling = ( (g_time_counter % g_sampling_rate) == 0);		
+		if (isSampling){
+			g_number_samples++;
+			g_sampled_addr.insert({target, true});
+		}
+
+		auto it = g_last_use_time.find(target);
+		if ( it == g_last_use_time.end()){
+			g_last_use_time.insert({target, 0});
+			return;
+		}
+		if (it->second == 0){
+			if (isSampling){
+				it->second = g_time_counter;
+			}
+			return;
+		}
+
+		uint32_t rd = g_time_counter - it->second;
+		if (isSampling){
+			it->second = g_time_counter;
+		}
+		else {
+			it->second = 0;
+		}
+		auto it2 = g_reuse_histo.find(rd);
+		if ( it2 == g_reuse_histo.end()){
+			g_reuse_histo.insert({rd, 1});
+		}
+		else {
+			it2->second ++;
+		}
+
+	}
 }
 
 
@@ -107,18 +148,21 @@ VOID Instruction(INS ins, VOID *v) {
 
 VOID Fini(INT32 code, VOID *v){
   
-  gettimeofday(&finish, 0);
-  // time = (finish.tv_sec - start.tv_sec);
+	gettimeofday(&finish, 0);
+	uint32_t time = (finish.tv_sec - start.tv_sec);
 
-  ResultFile.open(KnobResultFile.Value().c_str());
-  ResultFile << "#ACCESSES: " << g_time_counter << std::endl;
-  ResultFile << "#ELEMENTS: " << g_last_use_time.size() << std::endl; 
-  ResultFile << "#  [time reuse distance]\t[occurrence]" << std::endl;
-  for(auto const& x : g_reuse_histo){
-    ResultFile << x.first << "\t" << x.second << std::endl;
-
-  }
-  ResultFile.close();  
+	ResultFile.open(KnobResultFile.Value().c_str());
+	ResultFile << "#TIME: " << time << std::endl;
+	ResultFile << "#ACCESSES: " << g_time_counter << std::endl;
+	ResultFile << "#ELEMENTS: " << g_last_use_time.size() << std::endl;
+	ResultFile << "#SAMPLING_RATE: " << g_sampling_rate << std::endl;
+	ResultFile << "#NUMBER_SAMPLES: " << g_number_samples << std::endl;
+	ResultFile << "#SAMPLED_ELEMENTS: " << g_sampled_addr.size() << std::endl;
+	ResultFile << "#  [time reuse distance]\t[occurrence]" << std::endl;
+	for(auto const& x : g_reuse_histo){
+		ResultFile << x.first << "\t" << x.second << std::endl;
+	}
+	ResultFile.close();  
   
 }
 
@@ -130,6 +174,8 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
+
+    g_sampling_rate = KnobSamplingRate.Value();
 
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
