@@ -50,7 +50,7 @@ png(file=saveto, width=600, height=450)
 plot(x, y, type="l", lty=1, xlab=xlab, ylab=ylab, frame.plot=TRUE, col="red", main=title)
 legend("topright", legend, lty=ltys, col=cols)
 lines(x2, y2, type="l",lty=2, col="blue")
-evb.off()
+dev.off()
 
 
 #draw miss ratio curve
