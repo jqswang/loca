@@ -211,7 +211,7 @@ begin
 
   end
 rescue Exception => e
-  msg = "Loca Error Report: command 'loca #{cmd}' failed.\n#{e.message}" + "\n" + "#{e.backtrace * ' '}\n\n"
+  msg = "Loca Error Report: command 'loca-client #{cmd}' failed.\n#{e.message}" + "\n" + "#{e.backtrace * ' '}\n\n"
   msg += Labenv.env.inspect
   puts msg
 =begin
@@ -230,4 +230,3 @@ rescue Exception => e
   end # while
 =end
 end
-  

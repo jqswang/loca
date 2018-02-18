@@ -10,8 +10,8 @@ using namespace std;
 using namespace histo;
 KNOB<string> KnobResultFile(KNOB_MODE_WRITEONCE, "pintool",
 			    "o", "dual_fp.out", "specify result file name");
-KNOB<UINT32> KnobProfileMode(KNOB_MODE_WRITEONCE, "pintool", 
-			    "m","1", "instruction or/and data: data(1), inst(2), both(3)");    
+KNOB<UINT32> KnobProfileMode(KNOB_MODE_WRITEONCE, "pintool",
+			    "m","1", "instruction or/and data: data(1), inst(2), both(3)");
 
 #include <sys/time.h>
 #include <stdio.h>
@@ -24,8 +24,8 @@ KNOB<UINT32> KnobProfileMode(KNOB_MODE_WRITEONCE, "pintool",
 /* ===================================================================== */
 std::ofstream ResultFile;
 
-#define MAP_SIZE 0x4000000 //todo: if long is 64bit, size should be larger 
-//#define MAP_SIZE (1<<18) //around cache size: 8M = 2**23/(2**6) = 2**17 
+#define MAP_SIZE 0x4000000 //64MB covering //todo: if long is 64bit, size should be larger
+//#define MAP_SIZE (1<<18) //around cache size: 8M = 2**23/(2**6) = 2**17
 #define WORDSHIFT1 6
 #define WORDSHIFT2 2
 #define Index1(x) (x>>WORDSHIFT1)%MAP_SIZE
@@ -39,7 +39,7 @@ const  uint32_t              SUBLOG_BITS = 8;
 const  uint32_t              MAX_WINDOW = (65-SUBLOG_BITS)*(1<<SUBLOG_BITS);
 //const uint32_t MAX_WINDOW = 5890; //index_to_value(5888) = 1 billion
 
-static stamp_tt N = 0;//N: length of trace; M: maximum of footprint (total amount of different data); 
+static stamp_tt N = 0;//N: length of trace; M: maximum of footprint (total amount of different data);
 static stamp_tt M[2], stamps[MAP_SIZE][2];//Used as address hash
 static stamp_tt first_count_i[MAX_WINDOW][2];
 static stamp_tt first_count[MAX_WINDOW][2];
@@ -72,7 +72,7 @@ INT32 Usage() {
 VOID Record(ADDRINT ref){
   stamp_t i, idx;
 
-  N ++; 
+  N ++;
   for(i = 0; i < 2; i ++){
     if (!i) {
       idx = Index1(ref);
@@ -82,7 +82,7 @@ VOID Record(ADDRINT ref){
     stamp_tt prev_access = stamps[idx][i];
     stamps[idx][i] = N;
 
-    idx = sublog_value_to_index<MAX_WINDOW, SUBLOG_BITS> (N-prev_access);
+    idx = sublog_value_to_index<MAX_WINDOW, SUBLOG_BITS> (N-prev_access); //the time distance
 
     if(!prev_access){
       M[i] ++;
@@ -116,23 +116,23 @@ VOID RecordInst(VOID *ip)
 VOID Instruction(INS ins, VOID *v) {
     // Instruments loads using a predicated call, i.e.
     // the call happens iff the load will be actually executed.
-    // The IA-64 architecture has explicitly predicated instructions. 
-    // On the IA-32 and Intel(R) 64 architectures conditional moves and REP 
+    // The IA-64 architecture has explicitly predicated instructions.
+    // On the IA-32 and Intel(R) 64 architectures conditional moves and REP
     // prefixed instructions appear as predicated instructions in Pin.
   if(profile_data){
     if (INS_IsMemoryRead(ins)) {
       INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
-			   IARG_INST_PTR, IARG_MEMORYREAD_EA, 
+			   IARG_INST_PTR, IARG_MEMORYREAD_EA,
 			   IARG_END);
     }
     if (INS_HasMemoryRead2(ins)) {
       INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
-			   IARG_INST_PTR, IARG_MEMORYREAD2_EA, 
+			   IARG_INST_PTR, IARG_MEMORYREAD2_EA,
 			   IARG_END);
     }
     if (INS_IsMemoryWrite(ins))	{
       INS_InsertPredicatedCall(ins, IPOINT_BEFORE, (AFUNPTR)RecordMem,
-			   IARG_INST_PTR, IARG_MEMORYWRITE_EA, 
+			   IARG_INST_PTR, IARG_MEMORYWRITE_EA,
 			   IARG_END);
     }
   }
@@ -148,12 +148,12 @@ VOID Instruction(INS ins, VOID *v) {
 /* ===================================================================== */
 
 VOID Fini(INT32 code, VOID *v){
-  
+
   gettimeofday(&finish, 0);
   stamp_t time = (finish.tv_sec - start.tv_sec);
   stamp_t i, idx, k;
   stamp_tt ws, tmp;
-  
+
   char fname[512]; //[50]; //need to support long filename
   char mode = 'd';
   if(profile_inst){
@@ -164,7 +164,7 @@ VOID Fini(INT32 code, VOID *v){
 
   ResultFile.open(fname);
   ResultFile << "N:" << N << " M1:" << M[0] << " M2:" << M[1] << " total_time:" << time  << endl;
-  
+
   for(k = 0; k < 2; k++) {
     for(i = 0; i < MAP_SIZE; i++){
       if(!stamps[i][k])
@@ -178,7 +178,7 @@ VOID Fini(INT32 code, VOID *v){
 
   double sum=0.0, sum_i=0.0, fp, mr=1.0;
   double sum2=0.0, sum_i2=0.0, fp2, mr2=1.0;
-  
+
   for(i=1;i<=sublog_value_to_index<MAX_WINDOW, SUBLOG_BITS>(N);i++){
     ws = sublog_index_to_value<MAX_WINDOW, SUBLOG_BITS>(i);
     fp = ( 1.0 * (( N - sum ) * ws + sum_i)) / ( N - ws + 1 );
@@ -193,8 +193,8 @@ VOID Fini(INT32 code, VOID *v){
     mr2 -= lcount[i][1] * 1.0 / N;
     ResultFile << fp2*(1<<WORDSHIFT2) << "\t" <<  lcount[i][1] * 1.0 / N << "\t" << mr2 << endl;
   }
-  ResultFile.close();  
-  
+  ResultFile.close();
+
 }
 
 /* ===================================================================== */
@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 
     // Never returns
     PIN_StartProgram();
-    
+
     return 0;
 }
 
